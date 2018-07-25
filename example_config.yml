@@ -2,8 +2,9 @@
 oauth:
     client:
         id: client_id
+# client_secret required only when Token Endpoint Authentication is enabled on AS
         secret: client_secret
-    scope: [openid, profile, email]
+    scope: [openid]
     device_endpoint: https://provider.com/devicecode
     token_endpoint: https://provider.com/token
     userinfo_endpoint: https://provider.com/userinfo
@@ -27,8 +28,7 @@ texts:
 
 users:
     provider_user_sub_1:
-      - machine_username_1
-      - machine_username_2
+      - root
+      - bob
     provider_user_sub_2:
-      - machine_username_1
-      - machine_username_3
+      - mike
