@@ -3,7 +3,8 @@
 ## Instalation (Ubuntu 16.04)
 Read before copy-paste
 ```
-apt install python python-requests python-qrcode libpam-python
+apt install python python-requests python-qrcode libpam-python python-pip
+pip install pyyaml
 mkdir /lib/security
 cp src/pam_oauth2_device.py /lib/security/
 vim /etc/pam_oauth2_device/config.yml
