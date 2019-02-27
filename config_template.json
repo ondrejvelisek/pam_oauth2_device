@@ -1,0 +1,24 @@
+{
+    "oauth":
+    {
+        "client": {
+            "id": "client_id",
+            "secret": "client_secret"
+        },
+        "scope": "openid profile",
+        "device_endpoint":"https://provider.com/devicecode", 
+        "token_endpoint": "https://provider.com/token",
+        "userinfo_endpoint": "https://provider.com/userinfo"
+    },
+    "users": {
+        "provider_user_id_1":
+        [
+            "root",
+            "bob"
+        ],
+        "provider_user_id_2":
+        [
+            "mike"
+        ]
+    }
+}
