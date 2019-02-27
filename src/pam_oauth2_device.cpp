@@ -18,15 +18,18 @@
 using json = nlohmann::json;
 
 
-char *oauth_client_id;
-char *oauth_client_secret;
-char *oauth_scope;
-char *oauth_device_endpoint;
-char *oauth_token_endpoint;
-char *oauth_userinfo_endpoint;
+struct Userinfo {
+    std::string sub, username, name;
+};
 
 
-void load_config(const char *path) {
+struct Config {
+    char *client_id, *client_secret, *scope,
+         *device_endpoint, *token_endpoint, *userinfo_endpoint;
+};
+
+
+int load_config(struct Config *config, const char *path) {
     json j;
     std::string tmp;
 
@@ -34,38 +37,38 @@ void load_config(const char *path) {
     config_fstream >> j;
 
     tmp = j["oauth"]["client"]["id"];
-    oauth_client_id = new char[tmp.length() + 1];
-    strcpy(oauth_client_id, tmp.c_str());
+    config->client_id = (char *) malloc(strlen(tmp.c_str()) + 1);
+    strcpy(config->client_id, tmp.c_str());
 
     tmp = j["oauth"]["client"]["secret"];
-    oauth_client_secret = new char[tmp.length() + 1];
-    strcpy(oauth_client_secret, tmp.c_str());
+    config->client_secret = (char *) malloc(strlen(tmp.c_str()) + 1);
+    strcpy(config->client_secret, tmp.c_str());
 
     tmp = j["oauth"]["scope"];
-    oauth_scope = new char[tmp.length() + 1];
-    strcpy(oauth_scope, tmp.c_str());
+    config->scope = (char *) malloc(strlen(tmp.c_str()) + 1);
+    strcpy(config->scope, tmp.c_str());
 
     tmp = j["oauth"]["device_endpoint"];
-    oauth_device_endpoint = new char[tmp.length() + 1];
-    strcpy(oauth_device_endpoint, tmp.c_str());
+    config->device_endpoint = (char *) malloc(strlen(tmp.c_str()) + 1);
+    strcpy(config->device_endpoint, tmp.c_str());
 
     tmp = j["oauth"]["token_endpoint"];
-    oauth_token_endpoint = new char[tmp.length() + 1];
-    strcpy(oauth_token_endpoint, tmp.c_str());
+    config->token_endpoint = (char *) malloc(strlen(tmp.c_str()) + 1);
+    strcpy(config->token_endpoint, tmp.c_str());
 
     tmp = j["oauth"]["userinfo_endpoint"];
-    oauth_userinfo_endpoint = new char[tmp.length() + 1];
-    strcpy(oauth_userinfo_endpoint, tmp.c_str());
+    config->userinfo_endpoint = (char *) malloc(strlen(tmp.c_str()) + 1);
+    strcpy(config->userinfo_endpoint, tmp.c_str());
 }
 
 
-void clean_config() {
-    delete oauth_client_id;
-    delete oauth_client_secret;
-    delete oauth_scope;
-    delete oauth_device_endpoint;
-    delete oauth_token_endpoint;
-    delete oauth_userinfo_endpoint;
+void free_config(struct Config *config) {
+    free(config->client_id);
+    free(config->client_secret);
+    free(config->scope);
+    free(config->device_endpoint);
+    free(config->token_endpoint);
+    free(config->userinfo_endpoint);
 }
 
 
@@ -93,20 +96,13 @@ std::map<std::string,std::set<std::string>> get_user_map(const char *path) {
 }
 
 
-struct Userinfo {
-    std::string sub;
-    std::string username;
-    std::string name;
-};
-
-
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 
 
-std::string make_authorization_request(std::string &device_code) {
+std::string make_authorization_request(struct Config *config, std::string &device_code) {
     CURL *curl;
     CURLcode res;
 
@@ -115,9 +111,9 @@ std::string make_authorization_request(std::string &device_code) {
 
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, oauth_device_endpoint);
+        curl_easy_setopt(curl, CURLOPT_URL, config->device_endpoint);
         std::ostringstream oss;
-        oss << "client_id=" << oauth_client_id << "&scope=" << oauth_scope;
+        oss << "client_id=" << config->client_id << "&scope=" << config->scope;
         auto params_str = oss.str();
         char* params_char = new char[params_str.length() + 1];
         strcpy(params_char, params_str.c_str());
@@ -140,7 +136,7 @@ std::string make_authorization_request(std::string &device_code) {
     return prompt.str();
 }
 
-void poll_for_token(std::string &device_code, std::string &token) {
+void poll_for_token(struct Config *config, std::string &device_code, std::string &token) {
     CURL *curl;
     CURLcode res;
 
@@ -148,7 +144,7 @@ void poll_for_token(std::string &device_code, std::string &token) {
     std::ostringstream oss;
     oss << "grant_type=urn:ietf:params:oauth:grant-type:device_code" 
         << "&device_code=" << device_code
-        << "&client_id=" << oauth_client_id;
+        << "&client_id=" << config->client_id;
     auto params_str = oss.str();
     char* params_char = new char[params_str.length() + 1];
     strcpy(params_char, params_str.c_str());
@@ -164,14 +160,14 @@ void poll_for_token(std::string &device_code, std::string &token) {
         // Token request
         curl = curl_easy_init();
         if(curl) {
-            curl_easy_setopt(curl, CURLOPT_URL, oauth_token_endpoint);
+            curl_easy_setopt(curl, CURLOPT_URL, config->token_endpoint);
             struct curl_slist *headers = NULL;
             curl_slist_append(headers, "Accept: application/json");
             curl_slist_append(headers, "Content-Type: application/json");
             curl_slist_append(headers, "charsets: utf-8");
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-            curl_easy_setopt(curl, CURLOPT_USERNAME, oauth_client_id);
-            curl_easy_setopt(curl, CURLOPT_PASSWORD, oauth_client_secret);
+            curl_easy_setopt(curl, CURLOPT_USERNAME, config->client_id);
+            curl_easy_setopt(curl, CURLOPT_PASSWORD, config->client_secret);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params_char);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -207,7 +203,7 @@ void poll_for_token(std::string &device_code, std::string &token) {
     token = data["access_token"];
 }
 
-Userinfo get_userinfo(std::string token) {
+Userinfo get_userinfo(struct Config *config, std::string token) {
     CURL *curl;
     CURLcode res;
     std::string readBuffer;
@@ -215,7 +211,7 @@ Userinfo get_userinfo(std::string token) {
 
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, oauth_userinfo_endpoint);
+        curl_easy_setopt(curl, CURLOPT_URL, config->userinfo_endpoint);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
@@ -259,12 +255,15 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
     const char* pUsername;
     retval = pam_get_user(pamh, &pUsername, "Username: ");
 
-    load_config("/etc/pam_oauth2_device/config.json");
+    struct Config config;
+    if (load_config(&config, "/etc/pam_oauth2_device/config.json") != 0) {
+        return PAM_AUTH_ERR;
+    }
     auto usermap = get_user_map("/etc/pam_oauth2_device/config.json");
 
     std::string device_code;
     std::string token;
-    auto prompt = make_authorization_request(device_code);
+    auto prompt = make_authorization_request(&config, device_code);
 
     char *prompt_msg;
     prompt_msg = new char[prompt.length() + 1];
@@ -276,8 +275,10 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
 	struct pam_response *resp;
     int pam_err;
     pam_err = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
-	if (pam_err != PAM_SUCCESS)
+	if (pam_err != PAM_SUCCESS) {
+        free_config(&config);
 		return (PAM_SYSTEM_ERR);
+    }
 	msg.msg_style = PAM_PROMPT_ECHO_OFF;
 	msg.msg = prompt_msg;
 	msgp = &msg;
@@ -290,10 +291,10 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         free(resp);
     }
 
-    poll_for_token(device_code, token);
-    Userinfo userinfo = get_userinfo(token);
+    poll_for_token(&config, device_code, token);
+    struct Userinfo userinfo = get_userinfo(&config, token);
 
-    clean_config();
+    free_config(&config);
 
     if (usermap.count(userinfo.username) > 0) {
         if (usermap[userinfo.username].count(pUsername) > 0) {
