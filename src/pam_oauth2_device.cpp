@@ -161,11 +161,6 @@ void poll_for_token(struct Config *config, std::string &device_code, std::string
         curl = curl_easy_init();
         if(curl) {
             curl_easy_setopt(curl, CURLOPT_URL, config->token_endpoint);
-            struct curl_slist *headers = NULL;
-            curl_slist_append(headers, "Accept: application/json");
-            curl_slist_append(headers, "Content-Type: application/json");
-            curl_slist_append(headers, "charsets: utf-8");
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             curl_easy_setopt(curl, CURLOPT_USERNAME, config->client_id);
             curl_easy_setopt(curl, CURLOPT_PASSWORD, config->client_secret);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params_char);
@@ -256,10 +251,14 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
     retval = pam_get_user(pamh, &pUsername, "Username: ");
 
     struct Config config;
-    if (load_config(&config, "/etc/pam_oauth2_device/config.json") != 0) {
-        return PAM_AUTH_ERR;
+    std::map<std::string,std::set<std::string>> usermap;
+    if (argc > 0) {
+        if (load_config(&config, argv[0]) != 0) return PAM_AUTH_ERR;
+        usermap = get_user_map(argv[0]);
+    } else {
+        if (load_config(&config, "/etc/pam_oauth2_device/config.json") != 0) return PAM_AUTH_ERR;
+        usermap = get_user_map("/etc/pam_oauth2_device/config.json");
     }
-    auto usermap = get_user_map("/etc/pam_oauth2_device/config.json");
 
     std::string device_code;
     std::string token;
