@@ -13,7 +13,10 @@
 #include <string>
 #include <thread>
 #include <curl/curl.h>
+
 #include "include/nlohmann/json.hpp"
+#include "include/config.h"
+#include "include/ldapquery.h"
 
 using json = nlohmann::json;
 
@@ -21,55 +24,6 @@ using json = nlohmann::json;
 struct Userinfo {
     std::string sub, username, name;
 };
-
-
-struct Config {
-    char *client_id, *client_secret, *scope,
-         *device_endpoint, *token_endpoint, *userinfo_endpoint;
-};
-
-
-int load_config(struct Config *config, const char *path) {
-    json j;
-    std::string tmp;
-
-    std::ifstream config_fstream(path);
-    config_fstream >> j;
-
-    tmp = j["oauth"]["client"]["id"];
-    config->client_id = (char *) malloc(strlen(tmp.c_str()) + 1);
-    strcpy(config->client_id, tmp.c_str());
-
-    tmp = j["oauth"]["client"]["secret"];
-    config->client_secret = (char *) malloc(strlen(tmp.c_str()) + 1);
-    strcpy(config->client_secret, tmp.c_str());
-
-    tmp = j["oauth"]["scope"];
-    config->scope = (char *) malloc(strlen(tmp.c_str()) + 1);
-    strcpy(config->scope, tmp.c_str());
-
-    tmp = j["oauth"]["device_endpoint"];
-    config->device_endpoint = (char *) malloc(strlen(tmp.c_str()) + 1);
-    strcpy(config->device_endpoint, tmp.c_str());
-
-    tmp = j["oauth"]["token_endpoint"];
-    config->token_endpoint = (char *) malloc(strlen(tmp.c_str()) + 1);
-    strcpy(config->token_endpoint, tmp.c_str());
-
-    tmp = j["oauth"]["userinfo_endpoint"];
-    config->userinfo_endpoint = (char *) malloc(strlen(tmp.c_str()) + 1);
-    strcpy(config->userinfo_endpoint, tmp.c_str());
-}
-
-
-void free_config(struct Config *config) {
-    free(config->client_id);
-    free(config->client_secret);
-    free(config->scope);
-    free(config->device_endpoint);
-    free(config->token_endpoint);
-    free(config->userinfo_endpoint);
-}
 
 
 std::map<std::string,std::set<std::string>> get_user_map(const char *path) {
@@ -122,10 +76,10 @@ std::string make_authorization_request(struct Config *config, std::string &devic
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
     
         res = curl_easy_perform(curl);
-        delete params_char; // Free space
-        if(res != CURLE_OK)
-        fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                curl_easy_strerror(res));
+        delete params_char;
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        }
         curl_easy_cleanup(curl);
         auto data = json::parse(readBuffer);
         device_code = data["device_code"];
@@ -168,9 +122,9 @@ void poll_for_token(struct Config *config, std::string &device_code, std::string
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         
             res = curl_easy_perform(curl);
-            if(res != CURLE_OK)
-            fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                    curl_easy_strerror(res));
+            if(res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            }
         
             curl_easy_cleanup(curl);
 
@@ -194,7 +148,7 @@ void poll_for_token(struct Config *config, std::string &device_code, std::string
         }
         // End token request 
     }
-    delete params_char; // Free space
+    delete params_char;
     token = data["access_token"];
 }
 
@@ -220,9 +174,10 @@ Userinfo get_userinfo(struct Config *config, std::string token) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     
         res = curl_easy_perform(curl);
-        if(res != CURLE_OK)
-        fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                curl_easy_strerror(res));
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        }
+        delete auth_header_char;
         curl_easy_cleanup(curl);
         auto data = json::parse(readBuffer);
         userinfo.sub = data["sub"];
@@ -244,13 +199,21 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 }
 
 /* expected hook, custom logic */
-PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, const char **argv ) {
-    int retval;
-
+PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
+    int rc, pam_err;
     const char* pUsername;
-    retval = pam_get_user(pamh, &pUsername, "Username: ");
-
+    char *prompt_msg, *response, *filter;
+    size_t filter_length;
+    struct pam_conv *conv;
+	struct pam_message msg;
+	const struct pam_message *msgp;
+	struct pam_response *resp;
+    std::string prompt, device_code, token;
     struct Config config;
+    struct Userinfo userinfo;
+
+    rc = pam_get_user(pamh, &pUsername, "Username: ");
+
     std::map<std::string,std::set<std::string>> usermap;
     if (argc > 0) {
         if (load_config(&config, argv[0]) != 0) return PAM_AUTH_ERR;
@@ -260,46 +223,56 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags,int argc, cons
         usermap = get_user_map("/etc/pam_oauth2_device/config.json");
     }
 
-    std::string device_code;
-    std::string token;
-    auto prompt = make_authorization_request(&config, device_code);
+    prompt = make_authorization_request(&config, device_code);
 
-    char *prompt_msg;
-    prompt_msg = new char[prompt.length() + 1];
-    strcpy(prompt_msg, prompt.c_str());
-    char *response;
-    struct pam_conv *conv;
-	struct pam_message msg;
-	const struct pam_message *msgp;
-	struct pam_response *resp;
-    int pam_err;
     pam_err = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
 	if (pam_err != PAM_SUCCESS) {
         free_config(&config);
 		return (PAM_SYSTEM_ERR);
     }
+    prompt_msg = new char[prompt.length() + 1];
+    strcpy(prompt_msg, prompt.c_str());
 	msg.msg_style = PAM_PROMPT_ECHO_OFF;
 	msg.msg = prompt_msg;
 	msgp = &msg;
+    response = NULL;
     pam_err = (*conv->conv)(1, &msgp, &resp, conv->appdata_ptr);
     if (resp != NULL) {
-        if (pam_err == PAM_SUCCESS)
+        if (pam_err == PAM_SUCCESS) {
             response = resp->resp;
-        else
+        } else {
             free(resp->resp);
+        }
         free(resp);
     }
+    if (response) free(response);
+    delete prompt_msg;
 
     poll_for_token(&config, device_code, token);
-    struct Userinfo userinfo = get_userinfo(&config, token);
+    userinfo = get_userinfo(&config, token);
 
-    free_config(&config);
-
+    // Try to authenticate against local config
     if (usermap.count(userinfo.username) > 0) {
         if (usermap[userinfo.username].count(pUsername) > 0) {
+            free_config(&config);
             return PAM_SUCCESS;
         }
     }
+
+    // Try to authenticate against LDAP
+    if (config.ldap_host) {
+        filter_length = strlen(config.ldap_filter) + userinfo.username.length();
+        filter = (char *) malloc(filter_length);
+        snprintf(filter, filter_length, config.ldap_filter, userinfo.username.c_str());
+        rc = ldap_check_attr(config.ldap_host, config.ldap_basedn, config.ldap_user,
+                            config.ldap_passwd, filter, config.ldap_attr, pUsername);
+        free(filter);
+        free_config(&config);
+        if (rc == LDAPQUERY_TRUE) return PAM_SUCCESS;
+    } else {
+        free_config(&config);
+    }
+
     return PAM_AUTH_ERR;
 }
 

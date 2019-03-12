@@ -1,6 +1,5 @@
 {
-    "oauth":
-    {
+    "oauth": {
         "client": {
             "id": "client_id",
             "secret": "client_secret"
@@ -9,6 +8,14 @@
         "device_endpoint":"https://provider.com/devicecode", 
         "token_endpoint": "https://provider.com/token",
         "userinfo_endpoint": "https://provider.com/userinfo"
+    },
+    "ldap": {
+        "host": "ldaps://ldap-server:636",
+        "basedn": "basedn",
+        "user": "user",
+        "passwd": "password",
+        "filter": "(&(objectClass=user)(fedid=%s))",
+        "attr": "uid"
     },
     "users": {
         "provider_user_id_1":
