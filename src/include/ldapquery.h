@@ -5,4 +5,5 @@
 
 int ldap_check_attr(const char *host, const char *basedn,
                     const char *user, const char *passwd,
-                    const char *filter, char *attr, const char *value);
+                    const char *filter, const char *attr,
+                    const char *value);

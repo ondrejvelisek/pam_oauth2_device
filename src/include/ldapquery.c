@@ -8,7 +8,8 @@
 
 int ldap_check_attr(const char *host, const char *basedn,
                     const char *user, const char *passwd,
-                    const char *filter, char *attr, const char *value) {
+                    const char *filter, const char *attr,
+                    const char *value) {
     LDAP *ld;
     LDAPMessage *res, *msg;
     BerElement *ber;
@@ -17,7 +18,8 @@ int ldap_check_attr(const char *host, const char *basedn,
     int rc, i;
     struct berval cred;
     struct berval **vals;
-    char *attrs[] = {attr, NULL};
+    char *attr_local = NULL;
+    char *attrs[] = {attr_local, NULL};
     const int ldap_version = LDAP_VERSION3;
 
     if (ldap_initialize(&ld, host) != LDAP_SUCCESS) {
@@ -38,7 +40,9 @@ int ldap_check_attr(const char *host, const char *basedn,
         return LDAPQUERY_ERROR;
     }
 
+    attr_local = strdup(attr);
     rc = ldap_search_ext_s(ld, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, 0, NULL, NULL, NULL, 0, &res);
+    free(attr_local);
     if (rc != LDAP_SUCCESS) {
         ldap_msgfree(res);
         ldap_unbind_ext_s(ld, NULL, NULL);
