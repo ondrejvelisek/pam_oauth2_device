@@ -9,6 +9,9 @@
         "token_endpoint": "https://provider.com/token",
         "userinfo_endpoint": "https://provider.com/userinfo"
     },
+    "qr": {
+        "error_correction_level": 0
+    },
     "users": {
         "provider_user_id_1":
         [

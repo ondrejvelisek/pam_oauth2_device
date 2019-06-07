@@ -7,24 +7,71 @@
 #include <sstream>
 #include <thread>
 
-#include "include/config.h"
+#include "include/config.hpp"
 #include "include/ldapquery.h"
+#include "include/nayuki/QrCode.hpp"
 #include "include/nlohmann/json.hpp"
-#include "pam_oauth2_device.h"
+#include "pam_oauth2_device.hpp"
 
 using json = nlohmann::json;
 
 
-std::string DeviceAuthResponse::get_prompt() {
-    std::ostringstream prompt;
-    prompt << "Authenticate at\n-----------------\n";
-    if (!verification_uri_complete.empty()) {
-        prompt << verification_uri_complete;
-    } else {
-        prompt << verification_uri << std::endl
-               << "With code\n" << user_code;
+std::string getQr(const char* text, const int ecc=0, const int border=1) {
+    qrcodegen::QrCode::Ecc error_correction_level;
+    switch (ecc)
+    {
+    case 1:
+        error_correction_level = qrcodegen::QrCode::Ecc::MEDIUM;
+        break;
+    case 2:
+        error_correction_level = qrcodegen::QrCode::Ecc::HIGH;
+        break;
+    default:
+        error_correction_level = qrcodegen::QrCode::Ecc::LOW;
+        break;
     }
-    prompt << "\n-----------------\nHit enter when you authenticate\n";
+    qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText(
+        text, error_correction_level);
+
+    std::ostringstream oss;
+    int i, j, size, top, bottom;
+    size = qr.getSize();
+	for (j = -border;  j < size + border; j+=2) {
+		for (i = -border; i < size + border; ++i) {
+            top = qr.getModule(i, j);
+            bottom = qr.getModule(i, j+1);
+            if (top && bottom) {
+                oss << "\033[40;97m \033[0m";
+            } else if (top && !bottom) {
+                oss << "\033[40;97m\u2584\033[0m";
+            } else if (!top && bottom) {
+                oss << "\033[40;97m\u2580\033[0m";
+            } else {
+                oss << "\033[40;97m\u2588\033[0m";
+            }
+        }
+        oss << std::endl;
+    }
+    return oss.str();
+}
+
+
+std::string DeviceAuthResponse::get_prompt(const int qr_ecc=0) {
+    bool complete_url = !verification_uri_complete.empty();
+    std::ostringstream prompt;
+    prompt << "Authenticate at\n-----------------\n"
+           << (complete_url ? verification_uri_complete : verification_uri)
+           << "\n-----------------\n";
+    if (!complete_url) {
+        prompt << "With code" << user_code << user_code
+               << "\n-----------------\n";
+    }
+
+    prompt << "Or scan the QR code to authenticate with a mobile device"
+           << std::endl << std::endl 
+           << getQr((complete_url ? verification_uri_complete : verification_uri).c_str(), qr_ecc)
+           << std::endl 
+           << "Hit enter when you authenticate\n";
     return prompt.str();
 }
 
@@ -212,7 +259,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags, int argc, con
 	if (pam_err != PAM_SUCCESS) {
 		return (PAM_SYSTEM_ERR);
     }
-    prompt = device_auth_response.get_prompt();
+    prompt = device_auth_response.get_prompt(config.qr_error_correction_level);
 	msg.msg_style = PAM_PROMPT_ECHO_OFF;
 	msg.msg = prompt.c_str();
 	msgp = &msg;

@@ -17,6 +17,9 @@
         "filter": "(&(objectClass=user)(fedid=%s))",
         "attr": "uid"
     },
+    "qr": {
+        "error_correction_level": 0
+    },
     "users": {
         "provider_user_id_1":
         [
