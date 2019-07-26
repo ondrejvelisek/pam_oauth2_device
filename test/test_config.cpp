@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "include/config.h"
+#include "include/config.hpp"
 
 #define CLIENT_ID "client_id"
 
@@ -39,6 +39,7 @@ TEST(ConfigTest, Full) {
     EXPECT_EQ(config.ldap_host, "ldaps://ldap-server:636");
     EXPECT_EQ(config.usermap["provider_user_id_1"].count("root"), 1);
     EXPECT_EQ(config.usermap.size(), 2);
+    EXPECT_EQ(config.qr_error_correction_level, 0);
 }
 
 }

@@ -4,7 +4,7 @@ SRC_DIR = ../src
 
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
-CXXFLAGS += -g -Wall -Wextra -Wno-unused-parameter -pthread
+CXXFLAGS += -g -Wall -Wextra -Wno-unused-parameter -pthread -std=c++11
 
 LDLIBS=-lpam -lcurl -lldap -llber
 
@@ -13,12 +13,19 @@ TESTS = test_config test_pam_oauth2_device
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
                 $(GTEST_DIR)/include/gtest/internal/*.h
 
+objects = $(SRC_DIR)/pam_oauth2_device.o \
+		  $(SRC_DIR)/include/config.o \
+		  $(SRC_DIR)/include/ldapquery.o \
+		  $(SRC_DIR)/include/nayuki/BitBuffer.o \
+		  $(SRC_DIR)/include/nayuki/QrCode.o \
+		  $(SRC_DIR)/include/nayuki/QrSegment.o \
+		  test_pam_oauth2_device.o
 
 all: $(TESTS)
 	for test in $(TESTS); do ./$${test}; done
 
 clean:
-	rm -f gtest.a gtest_main.a *.o
+	rm -f gtest.a gtest_main.a *.o $(objects)
 
 distclean: clean
 	rm -f $(TESTS)
@@ -39,24 +46,17 @@ gtest.a : gtest-all.o
 gtest_main.a : gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
-config.o: $(SRC_DIR)/include/config.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(SRC_DIR)/include/config.cpp
+%.o: %.c %.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-ldapquery.o: $(SRC_DIR)/include/ldapquery.c
-	g++ $(CPPFLAGS) $(CXXFLAGS) -c $(SRC_DIR)/include/ldapquery.c
-
-pam_oauth2_device.o: $(SRC_DIR)/pam_oauth2_device.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(SRC_DIR)/pam_oauth2_device.cpp
-
-test_config.o: test_config.cpp $(GTEST_HEADERS) $(SRC_DIR)/include/config.h
+test_config.o: test_config.cpp $(GTEST_HEADERS) $(SRC_DIR)/include/config.hpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SRC_DIR) -c test_config.cpp
 
-test_config: test_config.o gtest_main.a config.o
+test_config: test_config.o gtest_main.a $(SRC_DIR)/include/config.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ -o $@
 
-test_pam_oauth2_device.o: test_pam_oauth2_device.cpp $(GTEST_HEADERS) $(SRC_DIR)/include/config.h $(SRC_DIR)/pam_oauth2_device.h
+test_pam_oauth2_device.o: test_pam_oauth2_device.cpp $(GTEST_HEADERS) $(SRC_DIR)/include/config.hpp $(SRC_DIR)/pam_oauth2_device.hpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -I$(SRC_DIR) -c test_pam_oauth2_device.cpp
 
-test_pam_oauth2_device: test_pam_oauth2_device.o gtest_main.a config.o ldapquery.o pam_oauth2_device.o
+test_pam_oauth2_device: gtest_main.a $(objects)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -lpthread $^ $(LDLIBS) -o $@
-

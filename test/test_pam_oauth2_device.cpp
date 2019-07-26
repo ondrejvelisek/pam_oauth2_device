@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "pam_oauth2_device.h"
+#include "pam_oauth2_device.hpp"
 
 #define DEVICE_ENDPOINT "http://localhost:8042/devicecode"
 #define TOKEN_ENDPOINT "http://localhost:8042/token"

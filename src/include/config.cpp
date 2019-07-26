@@ -3,7 +3,7 @@
 #include <map>
 #include <set>
 
-#include "config.h"
+#include "config.hpp"
 #include "nlohmann/json.hpp"
 
 using json = nlohmann::json;
@@ -25,6 +25,7 @@ int Config::load(const char *path) {
         device_endpoint = j.at("oauth").at("device_endpoint").get<std::string>();
         token_endpoint = j.at("oauth").at("token_endpoint").get<std::string>();
         userinfo_endpoint = j.at("oauth").at("userinfo_endpoint").get<std::string>();
+        qr_error_correction_level = j.at("qr").at("error_correction_level").get<int>();
     } catch (std::exception& e) {
         return 1;
     }

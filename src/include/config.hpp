@@ -1,3 +1,6 @@
+#ifndef PAM_OAUTH2_DEVICE_CONFIG_HPP
+#define PAM_OAUTH2_DEVICE_CONFIG_HPP
+
 #include <map>
 #include <set>
 #include <string>
@@ -18,5 +21,8 @@ class Config {
                     ldap_passwd,
                     ldap_filter,
                     ldap_attr;
+        int qr_error_correction_level;
         std::map<std::string,std::set<std::string>> usermap;
 };
+
+#endif  // PAM_OAUTH2_DEVICE_CONFIG_HPP
