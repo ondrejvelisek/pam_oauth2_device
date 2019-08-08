@@ -22,3 +22,7 @@ clean:
 
 distclean: clean
 	rm -f pam_oauth2_device.so
+
+install: pam_oauth2_device.so
+	install -D -t $(DESTDIR)$(PREFIX)/lib/security pam_oauth2_device.so
+	install -m 600 -D config_template.json $(DESTDIR)$(PREFIX)/etc/pam_oauth2_device/config.json
