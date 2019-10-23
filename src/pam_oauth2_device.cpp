@@ -81,8 +81,8 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
-
 int make_authorization_request(const char *client_id,
+                               const char *client_secret,
                                const char *scope,
                                const char *device_endpoint,
                                DeviceAuthResponse *response) {
@@ -95,6 +95,8 @@ int make_authorization_request(const char *client_id,
     if (curl) {
         std::string params = std::string("client_id=") + client_id + "&scope=" + scope;
         curl_easy_setopt(curl, CURLOPT_URL, device_endpoint);
+        curl_easy_setopt(curl, CURLOPT_USERNAME, client_id);
+        curl_easy_setopt(curl, CURLOPT_PASSWORD, client_secret);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, params.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -250,14 +252,16 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags, int argc, con
         if (config.load("/etc/pam_oauth2_device/config.json")) return PAM_AUTH_ERR;
     }
 
-    if (make_authorization_request(config.client_id.c_str(), config.scope.c_str(),
-                                   config.device_endpoint.c_str(), &device_auth_response)) {
+    if (make_authorization_request(
+            config.client_id.c_str(), config.client_secret.c_str(),
+            config.scope.c_str(), config.device_endpoint.c_str(),
+            &device_auth_response)) {
         return PAM_AUTH_ERR;
     }
 
     pam_err = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
 	if (pam_err != PAM_SUCCESS) {
-		return (PAM_SYSTEM_ERR);
+		return PAM_SYSTEM_ERR;
     }
     prompt = device_auth_response.get_prompt(config.qr_error_correction_level);
 	msg.msg_style = PAM_PROMPT_ECHO_OFF;

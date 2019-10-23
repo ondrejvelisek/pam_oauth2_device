@@ -20,6 +20,7 @@ class DeviceAuthResponse {
 };
 
 int make_authorization_request(const char *client_id,
+                               const char *client_secret,
                                const char *scope,
                                const char *device_endpoint,
                                DeviceAuthResponse *response);
