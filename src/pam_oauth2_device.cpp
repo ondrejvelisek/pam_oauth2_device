@@ -183,7 +183,10 @@ int poll_for_token(const char *client_id,
     return rc;
 }
 
-int get_userinfo(const char *userinfo_endpoint, const char *token, Userinfo *userinfo) {
+int get_userinfo(const char *userinfo_endpoint,
+                 const char *token,
+                 const char *username_attribute,
+                 Userinfo *userinfo) {
     int rc = 0;
     CURL *curl;
     CURLcode res;
@@ -207,7 +210,7 @@ int get_userinfo(const char *userinfo_endpoint, const char *token, Userinfo *use
             try {
                 auto data = json::parse(readBuffer);
                 userinfo->sub = data.at("sub");
-                userinfo->username = data.at("preferred_username");
+                userinfo->username = data.at(username_attribute);
                 userinfo->name = data.at("name");
             } catch (std::exception) {
                 rc = 1;
@@ -285,7 +288,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t *pamh, int flags, int argc, con
         return PAM_AUTH_ERR;
     }
 
-    if (get_userinfo(config.userinfo_endpoint.c_str(), token.c_str(), &userinfo)) {
+    if (get_userinfo(config.userinfo_endpoint.c_str(), token.c_str(),
+                     config.username_attribute.c_str(), &userinfo)) {
         return PAM_AUTH_ERR;
     }
 
