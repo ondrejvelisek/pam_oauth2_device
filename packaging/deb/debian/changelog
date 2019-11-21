@@ -1,0 +1,14 @@
+pamoauth2device (0.1.1-1) UNRELEASED; urgency=low
+
+  * New features:
+    - Add username_attribute to config (#7)
+  * Bug fixes:
+    - Add client authentication to device endpoint (#6)
+
+ -- Jaroslaw Surkont <jaroslaw.surkont@unibas.ch>  Thu, 21 Nov 2019 11:00:00 +0200
+
+pamoauth2device (0.1.0-1) UNRELEASED; urgency=low
+
+  * Initial release
+
+ -- Jaroslaw Surkont <jaroslaw.surkont@unibas.ch>  Thu, 08 Aug 2019 10:10:42 +0200

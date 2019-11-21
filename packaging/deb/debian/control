@@ -1,0 +1,19 @@
+Source: pamoauth2device
+Section: unknown
+Priority: optional
+Maintainer: Jaroslaw Surkont <jaroslaw.surkont@unibas.ch>
+Build-Depends: debhelper (>= 10),
+               libcurl4-openssl-dev,
+               libldap2-dev,
+               libpam0g-dev
+Standards-Version: 4.1.2
+Homepage: https://github.com/ICS-MU/pam_oauth2_device/tree/c_implementation
+
+Package: pamoauth2device
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         curl,
+         ldap-utils
+Description: PAM module for OAuth 2.0 Device Flow
+ PAM module that allows authentication against external OpenID Connect
+ identity provider using OAuth 2.0 Device Flow. 
