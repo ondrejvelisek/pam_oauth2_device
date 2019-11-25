@@ -7,7 +7,8 @@
         "scope": "openid profile",
         "device_endpoint":"https://provider.com/devicecode", 
         "token_endpoint": "https://provider.com/token",
-        "userinfo_endpoint": "https://provider.com/userinfo"
+        "userinfo_endpoint": "https://provider.com/userinfo",
+        "username_attribute": "preferred_username"
     },
     "ldap": {
         "host": "ldaps://ldap-server:636",

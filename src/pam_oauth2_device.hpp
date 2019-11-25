@@ -20,6 +20,7 @@ class DeviceAuthResponse {
 };
 
 int make_authorization_request(const char *client_id,
+                               const char *client_secret,
                                const char *scope,
                                const char *device_endpoint,
                                DeviceAuthResponse *response);
@@ -32,6 +33,7 @@ int poll_for_token(const char *client_id,
  
 int get_userinfo(const char *userinfo_endpoint,
                  const char *token,
+                 const char *username_attribute,
                  Userinfo *userinfo);
 
 #endif  // PAM_OAUTH2_DEVICE_HPP

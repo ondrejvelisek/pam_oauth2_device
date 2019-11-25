@@ -1,0 +1,3 @@
+!*.spec
+deb/pamoauth2device*
+rpm/RPMS

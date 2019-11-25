@@ -1,4 +1,4 @@
-# PAM module for OAuth 2.0 Device flow 
+# PAM module for OAuth 2.0 Device flow
 
 ## Instalation (Ubuntu 18.04)
 
