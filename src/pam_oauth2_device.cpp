@@ -323,6 +323,36 @@ void show_prompt(pam_handle_t *pamh,
         free(response);
 }
 
+bool is_authorized(Config *config,
+                   const char *username_local,
+                   const char *username_remote)
+{
+    // Try to authorize against local config
+    if (config->usermap.count(username_remote) > 0)
+    {
+        if (config->usermap[username_remote].count(username_local) > 0)
+        {
+            return true;
+        }
+    }
+
+    // Try to authorize against LDAP
+    if (!config->ldap_host.empty())
+    {
+        size_t filter_length = config->ldap_filter.length() + strlen(username_remote) + 1;
+        char *filter = new char[filter_length];
+        snprintf(filter, filter_length, config->ldap_filter.c_str(), username_remote);
+        int rc = ldap_check_attr(config->ldap_host.c_str(), config->ldap_basedn.c_str(),
+                                 config->ldap_user.c_str(), config->ldap_passwd.c_str(),
+                                 filter, config->ldap_attr.c_str(), username_local);
+        delete[] filter;
+        if (rc == LDAPQUERY_TRUE)
+            return true;
+    }
+
+    return false;
+}
+
 /* expected hook */
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
@@ -381,28 +411,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
         return PAM_AUTH_ERR;
     }
 
-    // Try to authorize against local config
-    if (config.usermap.count(userinfo.username) > 0)
-    {
-        if (config.usermap[userinfo.username].count(username_local) > 0)
-        {
-            return PAM_SUCCESS;
-        }
-    }
-
-    // Try to authenticate against LDAP
-    if (!config.ldap_host.empty())
-    {
-        size_t filter_length = config.ldap_filter.length() + userinfo.username.length() + 1;
-        char *filter = new char[filter_length];
-        snprintf(filter, filter_length, config.ldap_filter.c_str(), userinfo.username.c_str());
-        int rc = ldap_check_attr(config.ldap_host.c_str(), config.ldap_basedn.c_str(),
-                             config.ldap_user.c_str(), config.ldap_passwd.c_str(),
-                             filter, config.ldap_attr.c_str(), username_local);
-        delete[] filter;
-        if (rc == LDAPQUERY_TRUE)
-            return PAM_SUCCESS;
-    }
-
+    if (is_authorized(&config, username_local, userinfo.username.c_str()))
+        return PAM_SUCCESS;
     return PAM_AUTH_ERR;
 }
