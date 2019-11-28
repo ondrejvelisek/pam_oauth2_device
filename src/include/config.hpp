@@ -8,7 +8,7 @@
 class Config
 {
 public:
-    int load(const char *path);
+    void load(const char *path);
     std::string client_id,
         client_secret,
         scope,
