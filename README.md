@@ -13,7 +13,7 @@ See `config_template.json` (LDAP section is optional).
 
 ## Example Configuration (SSH, Ubuntu 18.04)
 
-Edit `/etc/pam.d/sshd`
+Edit `/etc/pam.d/sshd` and comment out other common-auth sections
 
 ```
 auth required pam_oauth2_device.so /etc/pam_oauth2_device/config.json
@@ -33,6 +33,16 @@ UsePAM yes
 ```
 systemctl restart sshd
 ```
+
+## Configuration config.json
+
+**qr** - allowed correction levels are
+
+  * 0 - low
+  * 1 - medium
+  * 2 - high
+
+**users** - user mapping. From claim configured in *username_attribute* to the local account name
 
 ## Development
 
