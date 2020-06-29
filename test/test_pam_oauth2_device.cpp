@@ -4,6 +4,7 @@
 #define DEVICE_ENDPOINT "http://localhost:8042/devicecode"
 #define TOKEN_ENDPOINT "http://localhost:8042/token"
 #define USERINFO_ENDPOINT "http://localhost:8042/userinfo"
+#define USERNAME_ATTRIBUTE "preferred_username"
 #define CLIENT_ID "client_id"
 #define CLIENT_SECRET "NDVmODY1ZDczMGIyMTM1MWFlYWM2NmYw"
 #define SCOPE "openid profile"
@@ -12,14 +13,17 @@
 #define ACCESS_TOKEN "ZjBhNTQxYzEzMGQwNWU1OWUxMDhkMTM5"
 #define VERIFICATION_URL "http://localhost:8042/oidc/device"
 
-namespace {
+namespace
+{
 
-TEST(PamTest, Device) {
-    int rc;
+TEST(PamTest, Device)
+{
     DeviceAuthResponse response;
-    rc = make_authorization_request(
-        CLIENT_ID, SCOPE, DEVICE_ENDPOINT, &response);
-    EXPECT_EQ(rc, 0);
+    make_authorization_request(CLIENT_ID,
+                               CLIENT_SECRET,
+                               SCOPE,
+                               DEVICE_ENDPOINT,
+                               &response);
     EXPECT_EQ(response.user_code, USER_CODE);
     EXPECT_EQ(response.device_code, DEVICE_CODE);
     EXPECT_EQ(response.verification_uri, VERIFICATION_URL);
@@ -27,24 +31,25 @@ TEST(PamTest, Device) {
               std::string(VERIFICATION_URL) + "?user_code=" + DEVICE_CODE);
 }
 
-TEST(PamTest, Token) {
-    int rc;
+TEST(PamTest, Token)
+{
     std::string token;
-    rc = poll_for_token(CLIENT_ID, CLIENT_SECRET,
-                        TOKEN_ENDPOINT,
-                        DEVICE_CODE, token);
-    EXPECT_EQ(rc, 0);
+    poll_for_token(CLIENT_ID, CLIENT_SECRET,
+                   TOKEN_ENDPOINT,
+                   DEVICE_CODE, token);
     EXPECT_EQ(token, ACCESS_TOKEN);
 }
 
-TEST(PamTest, Userinfo) {
-    int rc;
+TEST(PamTest, Userinfo)
+{
     Userinfo userinfo;
-    rc = get_userinfo(USERINFO_ENDPOINT, ACCESS_TOKEN, &userinfo);
-    EXPECT_EQ(rc, 0);
+    get_userinfo(USERINFO_ENDPOINT,
+                 ACCESS_TOKEN,
+                 USERNAME_ATTRIBUTE,
+                 &userinfo);
     EXPECT_EQ(userinfo.sub, "YzQ4YWIzMzJhZjc5OWFkMzgwNmEwM2M5");
     EXPECT_EQ(userinfo.username, "jdoe");
     EXPECT_EQ(userinfo.name, "Joe Doe");
 }
 
-}
+} // namespace

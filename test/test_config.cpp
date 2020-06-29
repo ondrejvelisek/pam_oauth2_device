@@ -1,40 +1,44 @@
 #include "gtest/gtest.h"
 #include "include/config.hpp"
+#include "include/nlohmann/json.hpp"
 
 #define CLIENT_ID "client_id"
 
-namespace {
+using json = nlohmann::json;
 
-TEST(ConfigTest, WrongFormat) {
-    struct Config config;
-    int rc;
-    rc = config.load("data/template_wrong.json");
-    EXPECT_EQ(rc, 1);
-    EXPECT_TRUE(config.client_id.empty());
+namespace
+{
+
+TEST(ConfigTest, MissingFile)
+{
+    Config config;
+    ASSERT_THROW(config.load("data/missing.json"), json::parse_error);
 }
 
-TEST(ConfigTest, Empty) {
-    struct Config config;
-    int rc;
-    rc = config.load("data/template_empty.json");
-    EXPECT_EQ(rc, 1);
-    EXPECT_TRUE(config.client_id.empty());
+TEST(ConfigTest, WrongFormat)
+{
+    Config config;
+    ASSERT_THROW(config.load("data/template_wrong.json"), json::parse_error);
 }
 
-TEST(ConfigTest, NoLdap) {
-    struct Config config;
-    int rc;
-    rc = config.load("data/template_noldap.json");
-    EXPECT_EQ(rc, 0);
+TEST(ConfigTest, Empty)
+{
+    Config config;
+    ASSERT_THROW(config.load("data/template_empty.json"), json::out_of_range);
+}
+
+TEST(ConfigTest, NoLdap)
+{
+    Config config;
+    config.load("data/template_noldap.json");
     EXPECT_EQ(config.client_id, CLIENT_ID);
     EXPECT_TRUE(config.ldap_host.empty());
 }
 
-TEST(ConfigTest, Full) {
-    struct Config config;
-    int rc;
-    rc = config.load("../config_template.json");
-    EXPECT_EQ(rc, 0);
+TEST(ConfigTest, Full)
+{
+    Config config;
+    config.load("../config_template.json");
     EXPECT_EQ(config.client_id, CLIENT_ID);
     EXPECT_EQ(config.ldap_host, "ldaps://ldap-server:636");
     EXPECT_EQ(config.usermap["provider_user_id_1"].count("root"), 1);
@@ -42,4 +46,4 @@ TEST(ConfigTest, Full) {
     EXPECT_EQ(config.qr_error_correction_level, 0);
 }
 
-}
+} // namespace
