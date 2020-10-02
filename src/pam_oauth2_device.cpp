@@ -363,24 +363,26 @@ bool is_authorized(Config *config,
             return true;
         }
     }
-
     // Try to authorize against LDAP
-    if (!config->ldap_host.empty())
+    if (!config->ldap_hosts.empty())
     {
         size_t filter_length = config->ldap_filter.length() + strlen(username_remote) + 1;
         char *filter = new char[filter_length];
         snprintf(filter, filter_length, config->ldap_filter.c_str(), username_remote);
-        int rc = ldap_check_attr(config->ldap_host.c_str(), config->ldap_basedn.c_str(),
-                                 config->ldap_user.c_str(), config->ldap_passwd.c_str(),
-                                 filter, config->ldap_attr.c_str(), username_local);
-        delete[] filter;
-        if (rc == LDAPQUERY_TRUE)
+        for (auto ldap_host : config->ldap_hosts)
         {
-            syslog(LOG_INFO, "user %s mapped to %s via LDAP", username_remote, username_local);
-            return true;
+            int rc = ldap_check_attr(ldap_host.c_str(), config->ldap_basedn.c_str(),
+                                     config->ldap_user.c_str(), config->ldap_passwd.c_str(),
+                                     filter, config->ldap_attr.c_str(), username_local);
+            if (rc == LDAPQUERY_TRUE)
+            {
+                delete[] filter;
+                syslog(LOG_INFO, "user %s mapped to %s via LDAP", username_remote, username_local);
+                return true;
+            }
         }
+        delete[] filter;
     }
-
     return false;
 }
 

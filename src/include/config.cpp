@@ -20,9 +20,12 @@ void Config::load(const char *path)
     userinfo_endpoint = j.at("oauth").at("userinfo_endpoint").get<std::string>();
     username_attribute = j.at("oauth").at("username_attribute").get<std::string>();
     qr_error_correction_level = j.at("qr").at("error_correction_level").get<int>();
-    if (j.find("ldap") != j.end())
+    if (j.find("ldap") != j.end() and j["ldap"].find("hosts") != j["ldap"].end())
     {
-        ldap_host = j.at("ldap").at("host").get<std::string>();
+        for (auto &host : j["ldap"]["hosts"])
+        {
+            ldap_hosts.insert((std::string)host);
+        }
         ldap_basedn = j.at("ldap").at("basedn").get<std::string>();
         ldap_user = j.at("ldap").at("user").get<std::string>();
         ldap_passwd = j.at("ldap").at("passwd").get<std::string>();
