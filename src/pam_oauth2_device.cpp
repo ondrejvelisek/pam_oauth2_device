@@ -1,6 +1,7 @@
 #include <curl/curl.h>
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
+#include <syslog.h>
 
 #include <chrono>
 #include <sstream>
@@ -148,7 +149,10 @@ void make_authorization_request(const char *client_id,
 
     curl = curl_easy_init();
     if (!curl)
+    {
+        syslog(LOG_ERR, "make_authorization_request: curl initialization failed");
         throw NetworkError();
+    }
     std::string params = std::string("client_id=") + client_id + "&scope=" + scope;
     curl_easy_setopt(curl, CURLOPT_URL, device_endpoint);
     curl_easy_setopt(curl, CURLOPT_USERNAME, client_id);
@@ -159,7 +163,10 @@ void make_authorization_request(const char *client_id,
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
     if (res != CURLE_OK)
+    {
+        syslog(LOG_ERR, "make_authorization_request: curl failed, rc=%d", res);
         throw NetworkError();
+    }
     try
     {
         auto data = json::parse(readBuffer);
@@ -173,6 +180,7 @@ void make_authorization_request(const char *client_id,
     }
     catch (json::exception &e)
     {
+        syslog(LOG_ERR, "make_authorization_request: json parse failed, error=%s", e.what());
         throw ResponseError();
     }
 }
@@ -201,13 +209,17 @@ void poll_for_token(const char *client_id,
         timeout -= interval;
         if (timeout < 0)
         {
+            syslog(LOG_ERR, "poll_for_token: timeout %ds exceeded", timeout);
             throw TimeoutError();
         }
         std::string readBuffer;
         std::this_thread::sleep_for(std::chrono::seconds(interval));
         curl = curl_easy_init();
         if (!curl)
+        {
+            syslog(LOG_ERR, "poll_for_token: curl initialization failed");
             throw NetworkError();
+        }
         curl_easy_setopt(curl, CURLOPT_URL, token_endpoint);
         curl_easy_setopt(curl, CURLOPT_USERNAME, client_id);
         curl_easy_setopt(curl, CURLOPT_PASSWORD, client_secret);
@@ -218,7 +230,10 @@ void poll_for_token(const char *client_id,
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
         if (res != CURLE_OK)
+        {
+            syslog(LOG_ERR, "poll_for_token: curl failed, rc=%d", res);
             throw NetworkError();
+        }
         try
         {
             data = json::parse(readBuffer);
@@ -237,11 +252,13 @@ void poll_for_token(const char *client_id,
             }
             else
             {
+                syslog(LOG_ERR, "poll_for_token: unknown response '%s'", ((std::string) data["error"]).c_str());
                 throw ResponseError();
             }
         }
         catch (json::exception &e)
         {
+            syslog(LOG_ERR, "poll_for_token: json parse failed, error=%s", e.what());
             throw ResponseError();
         }
     }
@@ -258,7 +275,10 @@ void get_userinfo(const char *userinfo_endpoint,
 
     curl = curl_easy_init();
     if (!curl)
+    {
+        syslog(LOG_ERR, "get_userinfo: curl initialization failed");
         throw NetworkError();
+    }
     curl_easy_setopt(curl, CURLOPT_URL, userinfo_endpoint);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -272,7 +292,10 @@ void get_userinfo(const char *userinfo_endpoint,
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
     if (res != CURLE_OK)
+    {
+        syslog(LOG_ERR, "get_userinfo: curl failed, rc=%d", res);
         throw NetworkError();
+    }
     try
     {
         auto data = json::parse(readBuffer);
@@ -282,6 +305,7 @@ void get_userinfo(const char *userinfo_endpoint,
     }
     catch (json::exception &e)
     {
+        syslog(LOG_ERR, "get_userinfo: json parse failed, error=%s", e.what());
         throw ResponseError();
     }
 }
@@ -300,7 +324,10 @@ void show_prompt(pam_handle_t *pamh,
 
     pam_err = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
     if (pam_err != PAM_SUCCESS)
+    {
+        syslog(LOG_ERR, "show_prompt: pam_get_item failed, rc=%d", pam_err);
         throw PamError();
+    }
     prompt = device_auth_response->get_prompt(qr_error_correction_level);
     msg.msg_style = PAM_PROMPT_ECHO_OFF;
     msg.msg = prompt.c_str();
@@ -332,6 +359,7 @@ bool is_authorized(Config *config,
     {
         if (config->usermap[username_remote].count(username_local) > 0)
         {
+            syslog(LOG_INFO, "user %s mapped to %s", username_remote, username_local);
             return true;
         }
     }
@@ -347,7 +375,10 @@ bool is_authorized(Config *config,
                                  filter, config->ldap_attr.c_str(), username_local);
         delete[] filter;
         if (rc == LDAPQUERY_TRUE)
+        {
+            syslog(LOG_INFO, "user %s mapped to %s via LDAP", username_remote, username_local);
             return true;
+        }
     }
 
     return false;
@@ -373,6 +404,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     Config config;
     DeviceAuthResponse device_auth_response;
     Userinfo userinfo;
+    int ret;
+
+    openlog("pam_oauth2_device", LOG_PID | LOG_NDELAY, LOG_AUTH);
 
     try
     {
@@ -380,13 +414,18 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     }
     catch (json::exception &e)
     {
-        return PAM_AUTH_ERR;
+        syslog(LOG_ERR, "cannot load configuration file from parameter or from config file /etc/pam_oauth2_device/config.json");
+        ret = PAM_AUTH_ERR;
+        goto end;
     }
 
     try
     {
-        if (pam_get_user(pamh, &username_local, "Username: ") != PAM_SUCCESS)
+        if (int rc = pam_get_user(pamh, &username_local, "Username: ") != PAM_SUCCESS)
+        {
+            syslog(LOG_ERR, "pam_get_user failed, rc=%d", rc);
             throw PamError();
+        }
         make_authorization_request(
             config.client_id.c_str(), config.client_secret.c_str(),
             config.scope.c_str(), config.device_endpoint.c_str(),
@@ -400,18 +439,30 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     }
     catch (PamError &e)
     {
-        return PAM_SYSTEM_ERR;
+        ret = PAM_SYSTEM_ERR;
+        goto end;
     }
     catch (TimeoutError &e)
     {
-        return PAM_AUTH_ERR;
+        ret = PAM_AUTH_ERR;
+        goto end;
     }
     catch (NetworkError &e)
     {
-        return PAM_AUTH_ERR;
+        ret = PAM_AUTH_ERR;
+        goto end;
     }
 
     if (is_authorized(&config, username_local, userinfo.username.c_str()))
-        return PAM_SUCCESS;
-    return PAM_AUTH_ERR;
+    {
+        syslog(LOG_INFO, "authentication succeeded");
+        ret = PAM_SUCCESS;
+        goto end;
+    }
+    syslog(LOG_INFO, "authentication failed");
+    ret = PAM_AUTH_ERR;
+
+    end:
+      closelog();
+      return ret;
 }
