@@ -16,12 +16,12 @@ public:
         token_endpoint,
         userinfo_endpoint,
         username_attribute,
-        ldap_host,
         ldap_basedn,
         ldap_user,
         ldap_passwd,
         ldap_filter,
         ldap_attr;
+    std::set<std::string> ldap_hosts;
     int qr_error_correction_level;
     std::map<std::string, std::set<std::string>> usermap;
 };

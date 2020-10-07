@@ -11,7 +11,12 @@
         "username_attribute": "preferred_username"
     },
     "ldap": {
-        "host": "ldaps://ldap-server:636",
+        "hosts":
+        [
+            "ldaps://ldap-server1:636",
+            "ldaps://ldap-server2:636",
+            "ldaps://ldap-server3:636"
+        ],
         "basedn": "basedn",
         "user": "user",
         "passwd": "password",
