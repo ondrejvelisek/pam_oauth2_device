@@ -383,6 +383,7 @@ bool is_authorized(Config *config,
         }
         delete[] filter;
     }
+    syslog(LOG_ERR, "cannot find mapping between user %s and local account %s", username_remote, username_local);
     return false;
 }
 
