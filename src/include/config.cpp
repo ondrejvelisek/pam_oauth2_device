@@ -51,4 +51,9 @@ void Config::load(const char *path)
             }
         }
     }
+    request_mfa = bool(false);
+    if (j["oauth"].contains("request_mfa"))
+    {
+        request_mfa = j.at("oauth").at("request_mfa").get<bool>();
+    }
 }
