@@ -44,6 +44,9 @@ systemctl restart sshd
 
 **users** - user mapping. From claim configured in *username_attribute* to the local account name
 
+**MFA** - under the **oauth** block, via setting ```"require_mfa": true```, the module will modify the requests to ask user 
+to perform the MFA. For more info on the exact form, see the ```config_template.json``` file.
+
 ## Development
 
 ### Instalation (Ubuntu 18.04)

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <sstream>
 #include <thread>
+#include <regex>
 
 #include "include/config.hpp"
 #include "include/ldapquery.h"
@@ -112,9 +113,10 @@ std::string getQr(const char *text, const int ecc = 0, const int border = 1)
 std::string DeviceAuthResponse::get_prompt(const int qr_ecc = 0)
 {
     bool complete_url = !verification_uri_complete.empty();
+    std::string prompt_uri (complete_url ? verification_uri_complete : verification_uri);
     std::ostringstream prompt;
     prompt << "Authenticate at\n-----------------\n"
-           << (complete_url ? verification_uri_complete : verification_uri)
+           << std::regex_replace(prompt_uri, std::regex("\\s"), "%20")
            << "\n-----------------\n";
     if (!complete_url)
     {
@@ -141,6 +143,7 @@ void make_authorization_request(const char *client_id,
                                 const char *client_secret,
                                 const char *scope,
                                 const char *device_endpoint,
+                                bool request_mfa,
                                 DeviceAuthResponse *response)
 {
     CURL *curl;
@@ -154,6 +157,11 @@ void make_authorization_request(const char *client_id,
         throw NetworkError();
     }
     std::string params = std::string("client_id=") + client_id + "&scope=" + scope;
+    if (request_mfa)
+    {
+        params += "&acr_values=https://refeds.org/profile/mfa";
+        params += " urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport";;
+    }
     curl_easy_setopt(curl, CURLOPT_URL, device_endpoint);
     curl_easy_setopt(curl, CURLOPT_USERNAME, client_id);
     curl_easy_setopt(curl, CURLOPT_PASSWORD, client_secret);
@@ -302,6 +310,11 @@ void get_userinfo(const char *userinfo_endpoint,
         userinfo->sub = data.at("sub");
         userinfo->username = data.at(username_attribute);
         userinfo->name = data.at("name");
+        userinfo->acr = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport";
+        if (data.find("acr") != data.end())
+        {
+            userinfo->acr = data.at("acr");
+        } 
     }
     catch (json::exception &e)
     {
@@ -352,8 +365,17 @@ void show_prompt(pam_handle_t *pamh,
 
 bool is_authorized(Config *config,
                    const char *username_local,
-                   const char *username_remote)
+                   const char *username_remote,
+                   const char *user_acr)
 {
+    // Check performing MFA
+    if (config->request_mfa)
+    {
+        if (strstr(user_acr, "https://refeds.org/profile/mfa") != nullptr) {
+            syslog(LOG_WARNING, "user %s did not perform MFA", username_remote);
+            return false;
+        }
+    }
     // Try to authorize against local config
     if (config->usermap.count(username_remote) > 0)
     {
@@ -423,6 +445,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     catch (json::exception &e)
     {
         syslog(LOG_ERR, "cannot load configuration file from parameter or from config file /etc/pam_oauth2_device/config.json");
+        syslog(LOG_DEBUG, "error message: %s", e.what());
         return safe_return(PAM_AUTH_ERR);
     }
 
@@ -436,7 +459,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
         make_authorization_request(
             config.client_id.c_str(), config.client_secret.c_str(),
             config.scope.c_str(), config.device_endpoint.c_str(),
-            &device_auth_response);
+            config.request_mfa, &device_auth_response);
         show_prompt(pamh, config.qr_error_correction_level, &device_auth_response);
         poll_for_token(config.client_id.c_str(), config.client_secret.c_str(),
                        config.token_endpoint.c_str(),
@@ -457,7 +480,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
         return safe_return(PAM_AUTH_ERR);
     }
 
-    if (is_authorized(&config, username_local, userinfo.username.c_str()))
+    if (is_authorized(&config, username_local, userinfo.username.c_str(), userinfo.acr.c_str()))
     {
         syslog(LOG_INFO, "authentication succeeded");
         return safe_return(PAM_SUCCESS);

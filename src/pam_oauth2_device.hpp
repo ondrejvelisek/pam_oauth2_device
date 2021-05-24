@@ -8,7 +8,8 @@ class Userinfo
 public:
     std::string sub,
         username,
-        name;
+        name,
+        acr;
 };
 
 class DeviceAuthResponse
@@ -25,6 +26,7 @@ void make_authorization_request(const char *client_id,
                                 const char *client_secret,
                                 const char *scope,
                                 const char *device_endpoint,
+                                bool request_mfa,
                                 DeviceAuthResponse *response);
 
 void poll_for_token(const char *client_id,

@@ -8,7 +8,8 @@
         "device_endpoint":"https://provider.com/devicecode", 
         "token_endpoint": "https://provider.com/token",
         "userinfo_endpoint": "https://provider.com/userinfo",
-        "username_attribute": "preferred_username"
+        "username_attribute": "preferred_username",
+        "require_mfa": false
     },
     "ldap": {
         "hosts":
