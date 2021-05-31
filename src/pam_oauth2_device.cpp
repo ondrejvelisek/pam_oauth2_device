@@ -105,7 +105,8 @@ std::string DeviceAuthResponse::get_prompt(const int qr_ecc = 0) {
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb,
                             void *userp) {
-  ((std::string *)userp)->append((char *)contents, size * nmemb);
+  ((std::string *)userp)
+      ->append(reinterpret_cast<char *>(contents), size * nmemb);
   return size * nmemb;
 }
 
@@ -128,7 +129,6 @@ void make_authorization_request(const char *client_id,
     params += "&acr_values=https://refeds.org/profile/mfa";
     params +=
         " urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport";
-    ;
   }
   curl_easy_setopt(curl, CURLOPT_URL, device_endpoint);
   curl_easy_setopt(curl, CURLOPT_USERNAME, client_id);
@@ -160,7 +160,7 @@ void make_authorization_request(const char *client_id,
 
 void poll_for_token(const char *client_id, const char *client_secret,
                     const char *token_endpoint, const char *device_code,
-                    std::string &token) {
+                    std::string *token) {
   int timeout = 300, interval = 3;
   CURL *curl;
   CURLcode res;
@@ -201,7 +201,7 @@ void poll_for_token(const char *client_id, const char *client_secret,
     try {
       data = json::parse(readBuffer);
       if (data["error"].empty()) {
-        token = data.at("access_token");
+        token->assign(data.at("access_token"));
         break;
       } else if (data["error"] == "authorization_pending") {
         // Do nothing
@@ -389,7 +389,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     show_prompt(pamh, config.qr_error_correction_level, &device_auth_response);
     poll_for_token(config.client_id.c_str(), config.client_secret.c_str(),
                    config.token_endpoint.c_str(),
-                   device_auth_response.device_code.c_str(), token);
+                   device_auth_response.device_code.c_str(), &token);
     get_userinfo(config.userinfo_endpoint.c_str(), token.c_str(),
                  config.username_attribute.c_str(), &userinfo);
   } catch (PamError &e) {

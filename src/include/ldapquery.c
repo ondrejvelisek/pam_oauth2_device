@@ -1,4 +1,4 @@
-#include "ldapquery.h"
+#include "ldapquery.h"  // NOLINT(build/include_subdir)
 
 #include <ldap.h>
 #include <stdio.h>
@@ -29,8 +29,9 @@ int ldap_check_attr(const char *host, const char *basedn, const char *user,
     return LDAPQUERY_ERROR;
   }
 
-  passwd_local = (char *)malloc(strlen(passwd) + 1);
-  strcpy(passwd_local, passwd);
+  passwd_local =
+      (char *)malloc(strlen(passwd) + 1);  // NOLINT(readability/casting)
+  strcpy(passwd_local, passwd);            // NOLINT(runtime/printf)
   cred.bv_val = passwd_local;
   cred.bv_len = strlen(passwd);
   rc = ldap_sasl_bind_s(ld, user, LDAP_SASL_SIMPLE, &cred, NULL, NULL,

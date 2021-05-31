@@ -22,8 +22,7 @@ void Config::load(const char *path) {
       j.at("oauth").at("username_attribute").get<std::string>();
   qr_error_correction_level =
       j.at("qr").at("error_correction_level").get<int>();
-  if (j.find("ldap") != j.end() and
-      j["ldap"].find("hosts") != j["ldap"].end()) {
+  if (j.find("ldap") != j.end() && j["ldap"].find("hosts") != j["ldap"].end()) {
     for (auto &host : j["ldap"]["hosts"]) {
       ldap_hosts.insert((std::string)host);
     }
@@ -46,7 +45,7 @@ void Config::load(const char *path) {
       }
     }
   }
-  request_mfa = bool(false);
+  request_mfa = false;
   if (j["oauth"].contains("request_mfa")) {
     request_mfa = j.at("oauth").at("request_mfa").get<bool>();
   }

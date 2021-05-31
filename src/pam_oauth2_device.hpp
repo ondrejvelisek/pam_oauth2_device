@@ -22,7 +22,7 @@ void make_authorization_request(const char *client_id,
 
 void poll_for_token(const char *client_id, const char *client_secret,
                     const char *token_endpoint, const char *device_code,
-                    std::string &token);
+                    std::string *token);
 
 void get_userinfo(const char *userinfo_endpoint, const char *token,
                   const char *username_attribute, Userinfo *userinfo);
