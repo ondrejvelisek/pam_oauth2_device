@@ -1,4 +1,4 @@
-GTEST_DIR = ./googletest-release-1.8.1/googletest
+GTEST_DIR = ./googletest-release-1.10.0/googletest/
 
 SRC_DIR = ../src
 
