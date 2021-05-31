@@ -110,3 +110,25 @@ sudo ln -s pam_oauth2_device.so /lib/security/
 ```bash
 pamtester -v pamtester username authenticate
 ```
+
+## Contributing
+
+In this project we automatically generate releases and update the changelog
+(for more information see, this
+[github action](https://github.com/google-github-actions/release-please-action)).
+For this reason commit messages need to follow the
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+specification.
+
+To improve both code quality and consistency, every commit needs to pass
+linter and formatter checks. Please follow the
+[Google C++ style guide](https://google.github.io/styleguide/cppguide.html).
+You can use `clang-format` to automatically format your code.
+Formatter can be integrated with most IDEs or used from CLI, e.g.
+`clang-format --style Google -i src/pam_oauth2_device.cpp`
+
+You can run linter (`cpplint`) locally with `cpplint src/* src/include/*`.
+`cpplint` is a Python tool and can be pip installed `pip install cpplint`
+
+Make sure that unit tests are passing, see [test/README.md](test/README.md).
+Add new tests if necessary.
