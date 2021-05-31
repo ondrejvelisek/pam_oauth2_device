@@ -18,7 +18,7 @@ namespace {
 TEST(PamTest, Device) {
   DeviceAuthResponse response;
   make_authorization_request(CLIENT_ID, CLIENT_SECRET, SCOPE, DEVICE_ENDPOINT,
-                             &response);
+                             false, &response);
   EXPECT_EQ(response.user_code, USER_CODE);
   EXPECT_EQ(response.device_code, DEVICE_CODE);
   EXPECT_EQ(response.verification_uri, VERIFICATION_URL);
