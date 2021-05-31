@@ -313,8 +313,11 @@ bool is_authorized(Config *config, const char *username_local,
   // Try to authorize against LDAP
   if (!config->ldap_hosts.empty()) {
     size_t filter_length =
-        config->ldap_filter.length() + strlen(username_remote) + 1;
+        config->ldap_filter.length() + sizeof(username_remote);
     char *filter = new char[filter_length];
+    // Ignore `format` error, `ldap_filter` value is defined in the config
+    // file by a privilaged user.
+    // Flawfinder: ignore
     snprintf(filter, filter_length, config->ldap_filter.c_str(),
              username_remote);
     for (auto ldap_host : config->ldap_hosts) {

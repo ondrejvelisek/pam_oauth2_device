@@ -29,11 +29,10 @@ int ldap_check_attr(const char *host, const char *basedn, const char *user,
     return LDAPQUERY_ERROR;
   }
 
-  passwd_local =
-      (char *)malloc(strlen(passwd) + 1);  // NOLINT(readability/casting)
-  strcpy(passwd_local, passwd);            // NOLINT(runtime/printf)
+  passwd_local = (char *)malloc(sizeof(passwd));  // NOLINT(readability/casting)
+  snprintf(passwd_local, sizeof(passwd), "%s", passwd);
   cred.bv_val = passwd_local;
-  cred.bv_len = strlen(passwd);
+  cred.bv_len = sizeof(passwd) - 1;
   rc = ldap_sasl_bind_s(ld, user, LDAP_SASL_SIMPLE, &cred, NULL, NULL,
                         &servercredp);
   free(passwd_local);
