@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libldap2-dev libpam0g-dev libcurl4-openssl-dev
+      - name: Build PAM module
+        run: make
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: release-please-action
+        uses: google-github-actions/release-please-action@v2
+        with:
+          package-name: actions-test
+          release-type: simple
+          bump-minor-pre-major: true
