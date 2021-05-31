@@ -80,26 +80,32 @@ std::string getQr(const char *text, const int ecc = 0, const int border = 1) {
   return oss.str();
 }
 
-std::string DeviceAuthResponse::get_prompt(const int qr_ecc = 0) {
+std::string DeviceAuthResponse::get_prompt(const int qr_ecc = 0,
+                                           const bool qr_show = true) {
   bool complete_url = !verification_uri_complete.empty();
   std::string prompt_uri(complete_url ? verification_uri_complete
                                       : verification_uri);
   std::ostringstream prompt;
-  prompt << "Authenticate at\n-----------------\n"
-         << std::regex_replace(prompt_uri, std::regex("\\s"), "%20")
-         << "\n-----------------\n";
-  if (!complete_url) {
-    prompt << "With code" << user_code << user_code << "\n-----------------\n";
-  }
-
-  prompt << "Or scan the QR code to authenticate with a mobile device"
+  prompt << "Authenticate at the identity provider using the following URL."
          << std::endl
-         << std::endl
-         << getQr((complete_url ? verification_uri_complete : verification_uri)
+         << std::endl;
+  if (qr_show) {
+    prompt << "Alternatively, to authenticate with a mobile device, scan the "
+              "QR code."
+           << std::endl
+           << std::endl
+           << getQr(
+                  (complete_url ? verification_uri_complete : verification_uri)
                       .c_str(),
                   qr_ecc)
-         << std::endl
-         << "Hit enter when you authenticate\n";
+           << std::endl;
+  }
+  prompt << std::regex_replace(prompt_uri, std::regex("\\s"), "%20")
+         << std::endl;
+  if (!complete_url) {
+    prompt << "With code: " << user_code << std::endl;
+  }
+  prompt << std::endl << "Hit enter when you have authenticated." << std::endl;
   return prompt.str();
 }
 
@@ -262,8 +268,8 @@ void get_userinfo(const char *userinfo_endpoint, const char *token,
   }
 }
 
-void show_prompt(pam_handle_t *pamh, int qr_error_correction_level,
-                 DeviceAuthResponse *device_auth_response) {
+void show_prompt(pam_handle_t *pamh, const int qr_error_correction_level,
+                 const bool qr_show, DeviceAuthResponse *device_auth_response) {
   int pam_err;
   char *response;
   struct pam_conv *conv;
@@ -277,7 +283,7 @@ void show_prompt(pam_handle_t *pamh, int qr_error_correction_level,
     syslog(LOG_ERR, "show_prompt: pam_get_item failed, rc=%d", pam_err);
     throw PamError();
   }
-  prompt = device_auth_response->get_prompt(qr_error_correction_level);
+  prompt = device_auth_response->get_prompt(qr_error_correction_level, qr_show);
   msg.msg_style = PAM_PROMPT_ECHO_OFF;
   msg.msg = prompt.c_str();
   msgp = &msg;
@@ -389,7 +395,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
         config.client_id.c_str(), config.client_secret.c_str(),
         config.scope.c_str(), config.device_endpoint.c_str(),
         config.request_mfa, &device_auth_response);
-    show_prompt(pamh, config.qr_error_correction_level, &device_auth_response);
+    show_prompt(pamh, config.qr_error_correction_level, config.qr_show,
+                &device_auth_response);
     poll_for_token(config.client_id.c_str(), config.client_secret.c_str(),
                    config.token_endpoint.c_str(),
                    device_auth_response.device_code.c_str(), &token);

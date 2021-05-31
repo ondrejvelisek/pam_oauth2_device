@@ -12,7 +12,7 @@ class DeviceAuthResponse {
  public:
   std::string user_code, verification_uri, verification_uri_complete,
       device_code;
-  std::string get_prompt(const int qr_ecc);
+  std::string get_prompt(const int qr_ecc, const bool qr_show);
 };
 
 void make_authorization_request(const char *client_id,
