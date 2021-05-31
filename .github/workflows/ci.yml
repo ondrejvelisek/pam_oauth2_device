@@ -34,6 +34,13 @@ jobs:
           sudo apt-get install libldap2-dev libpam0g-dev libcurl4-openssl-dev
       - name: Build PAM module
         run: make
+      - name: Run unit tests
+        run: |
+          cd test
+          wget https://github.com/google/googletest/archive/refs/tags/release-1.10.0.tar.gz
+          tar -xf release-1.10.0.tar.gz
+          ./mock_server.py &
+          make
 
   release:
     runs-on: ubuntu-latest
