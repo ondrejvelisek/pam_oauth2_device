@@ -1,0 +1,6 @@
+# Google C++ test library
+googletest*
+
+# Binaries
+test_config
+test_pam_oauth2_device
