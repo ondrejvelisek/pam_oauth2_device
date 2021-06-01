@@ -22,6 +22,8 @@ void Config::load(const char *path) {
       j.at("oauth").at("username_attribute").get<std::string>();
   qr_error_correction_level =
       j.at("qr").at("error_correction_level").get<int>();
+  qr_show =
+      (j["qr"].contains("show")) ? j.at("qr").at("show").get<bool>() : true;
   if (j.find("ldap") != j.end() && j["ldap"].find("hosts") != j["ldap"].end()) {
     for (auto &host : j["ldap"]["hosts"]) {
       ldap_hosts.insert((std::string)host);

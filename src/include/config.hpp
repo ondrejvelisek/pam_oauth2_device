@@ -11,7 +11,7 @@ class Config {
   std::string client_id, client_secret, scope, device_endpoint, token_endpoint,
       userinfo_endpoint, username_attribute, ldap_basedn, ldap_user,
       ldap_passwd, ldap_filter, ldap_attr;
-  bool request_mfa;
+  bool request_mfa, qr_show;
   std::set<std::string> ldap_hosts;
   int qr_error_correction_level;
   std::map<std::string, std::set<std::string>> usermap;

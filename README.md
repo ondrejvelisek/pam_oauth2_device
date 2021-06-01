@@ -28,18 +28,17 @@ See `config_template.json` (LDAP section is optional).
 
 Edit `/etc/pam_oauth2_device/config.json`.
 
-**qr** - allowed correction levels are
-
-- 0 - low
-- 1 - medium
-- 2 - high
-
-**users** - user mapping. From claim configured in _username_attribute_
-to the local account name
-
-**MFA** - under the **oauth** block, via setting `"require_mfa": true`,
-the module will modify the requests to ask user to perform the MFA.
-For more info on the exact form, see the `config_template.json` file.
+- `qr` QR code encodes the authentication URL.
+  - `show`: show (`true`, default) or hide (`false`) the QR code
+  - `error_correction_level`: allowed correction levels are
+    - 0 - low
+    - 1 - medium
+    - 2 - high
+- `users` User mapping from claim configured in _username_attribute_
+  to the local account name.
+- `oauth` configuration for the OIDC identity provider.
+  - `require_mfa`: if `true` the module will modify the requests to ask
+    user to perform the MFA.
 
 ### Example Configuration for sshd
 
